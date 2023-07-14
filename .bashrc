@@ -21,6 +21,8 @@ if [ -f /etc/bash_completion ]; then
     source /etc/bash_completion;
 fi
 
+source ~/.git-prompt.sh
+
 # makes less work on things like tarballs and images
 [ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
 
