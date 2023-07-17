@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 
-PROMPT_COMMAND='__posh_git_ps1 "$CONDA_DEFAULT_ENV \\u@local \\w " "\\\$ ";'$PROMPT_COMMAND
-
 if [[ $HOSTNAME == "biowulf.nih.gov" ]] ; then
-    export PS1="\u@\[$(tput sgr0)\]\[\033[38;5;214m\]\h\[$(tput sgr0)\]:\w\\$ "
-fi
-if [[ $HOSTNAME == "helix.nih.gov" ]]; then
-    export PS1="\u@\[$(tput sgr0)\]\[\033[38;5;174m\]\h\[$(tput sgr0)\]:\w\\$ "
+    PROMPT_COMMAND='__posh_git_ps1 "$CONDA_DEFAULT_ENV \\u@\\[$(tput sgr0)\\]\\[\\033[38;5;214m\\]\\h\\[$(tput sgr0)\\]:\\w " "\\\$ ";'$PROMPT_COMMAND
+elif [[ $HOSTNAME == "helix.nih.gov" ]]; then
+    PROMPT_COMMAND='__posh_git_ps1 "$CONDA_DEFAULT_ENV \\u@\\[$(tput sgr0)\\]\\[\\033[38;5;174m\\]\\h\\[$(tput sgr0)\\]:\\w " "\\\$ ";'$PROMPT_COMMAND
+else
+    PROMPT_COMMAND='__posh_git_ps1 "$CONDA_DEFAULT_ENV \\u@local \\w " "\\\$ ";'$PROMPT_COMMAND
 fi
