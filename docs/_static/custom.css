@@ -1,0 +1,80 @@
+div.details p {
+    font-style: italic;
+    font-size: 90%;
+    color: #aaaaaa;
+    padding: 5px;
+    margin: 5px;
+}
+
+div.details a {
+    color: #aaaaaa;
+}
+
+div.details code {
+    background: none;
+    color: #aaaaaa;
+}
+
+div.highlight {
+    border: 2px black solid;
+}
+
+div.details pre {
+    background: #fcfcfc;
+}
+
+div.details div.highlight {
+    border: 1px black solid;
+}
+
+summary {
+    font-weight: bold;
+}
+
+div.note {
+    background-color: #f7f9ff;
+}
+
+div.tip {
+    background-color: #f1f8f1;
+}
+
+div.seealso {
+    background-color: #fffaf1;
+}
+
+div.admonition p.admonition-title {
+    font-size: 20px;
+}
+
+thead {
+    background: #5e6682;
+    color: white;
+}
+
+kbd {
+    border: 1px solid black;
+    border-radius: 5px;
+    padding-right: 5px;
+    padding-left: 5px;
+    padding-top: 0.2em;
+    padding-bottom: 0.2em;
+    background: #fcfcfc;
+    font-size: 0.9em;
+}
+
+kbd.compound {
+    border: none;
+}
+
+.versionadded {
+    border-left: 2px #da384c solid;
+    font-size: .8em;
+    padding-left: 5px;
+}
+
+.versionchanged {
+    border-left: 2px #5e6682 solid;
+    font-size: .8em;
+    padding-left: 5px;
+}

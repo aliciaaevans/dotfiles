@@ -14,8 +14,10 @@ function start_agent {
         else
             additional_arg="--apple-use-keychain"
         fi
+        ssh-add "$additional_arg"
+    else
+        ssh-add
     fi
-    ssh-add "$additional_arg"
 }
 
 # `tre` is a shorthand for `tree` with hidden files and color enabled, ignoring
@@ -77,8 +79,8 @@ function prsetup {
 }
 
 function ca() {
-    # This function allows you only activate the base env when you're ready to
-    # (and don't activate it on EVERY new shell).
+    # This function allows you to activate the base env only when you're ready
+    # to (and don't activate it on EVERY new shell).
     #
     # You can also provide an env name or path to activate it.
     eval "$(conda shell.bash hook 2> /dev/null)"
@@ -90,7 +92,32 @@ function conda_deactivate_all() {
     # Keep deactivating until we no longer have a CONDA_PREFIX env var (which
     # might be a few times, if we had activated the base env and then another
     # env)
+    eval "$(conda shell.bash hook 2> /dev/null)"
     while [ -n "$CONDA_PREFIX" ]; do
         conda deactivate;
     done
+}
+
+function hostlist() {
+    # Parse ~/.ssh/config and print out a nicely-formatted table of configured
+    # hosts. Useful for when you're trying to remember how to log in to an
+    # infrequently-accessed host.
+    paste \
+        <(grep -i "^Host" ~/.ssh/config | grep -v "*" | awk '{print $2}') \
+        <(grep -i "Hostname" ~/.ssh/config | grep -v "*" | awk '{print $2}') \
+        | column -t \
+        | sort
+}
+
+function git-clean-branches () {
+    # Print local branches that have been merged into main (or master).
+    #
+    # Auto-detect whether to use main/master.
+    local DEFAULT_BRANCH=$(git branch | grep -Ew "main|master" | sed "s/\* //")
+
+    # Just print the names. If you're on a branch that has been merged (has
+    # a "*"), don't print it
+    git branch --merged $DEFAULT_BRANCH | grep -v "\*" | grep -Evw $DEFAULT_BRANCH
+
+    echo "Use 'git-clean-branches | xargs git branch -d' to actually delete these." >&2
 }

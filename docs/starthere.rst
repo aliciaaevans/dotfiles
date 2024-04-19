@@ -6,17 +6,19 @@ Start here
 
 A couple of preliminary things to get out of the way:
 
-* There are **three general sections**:
-   - :ref:`dotfilessection` for copying over the `dotfiles <https://medium.com/@webprolific/getting-started-with-dotfiles-43c3602fd789>`_ in this repo to your home directory
-   - :ref:`setupsection` for setting up vim/neovim and conda
-   - :ref:`toolsection` for installing useful tools
-
-* **Everything is driven** by :file:`setup.sh`. When in doubt, consult that
+* **Everything is driven by** :file:`setup.sh`. When in doubt, consult that
   file.
 
-* Everything here is **simply a convenience** to make life easier setting up
+* **Everything here is simply a convenience** to make life easier setting up
   a new machine. Since I spent the work figuring this out, I might as well make it
-  available to others. For example:
+  available to others.
+
+* **All steps are optional** though there are some dependencies and assumptions
+  which are noted as they come up.
+
+.. details:: Details
+
+    For example:
 
     * There are some common fixes for things like backspace in vim not working
       in tmux, spaces instead of tabs for Python code, getting the mouse to
@@ -26,307 +28,236 @@ A couple of preliminary things to get out of the way:
       following the particular installation instructions, you can instead use the
       ``--install-<toolname>`` commands.
 
-    * The ``--diffs`` commands help figure out if all your dotfiles on
+    * The ``--vim-diffs`` commands help figure out if all your dotfiles on
       a particular machine are up-to-date with this repo.
 
     * A centrally available resource for setup and configuration means there's
       only one place to look for updates.
 
-* **All steps are optional** though there are some dependencies and assumptions
-  which are noted as they come up.
-
 .. _step0:
 
-Step 0: Download and check the help
------------------------------------
+0: Download and check
+---------------------
 
-**If you already have git installed,** clone the repo and go to the directory:
+* Download the latest `zip file <https://github.com/daler/dotfiles/archive/master.zip>`_
+* Unzip it and go to the unzipped directory in your terminal
+* Run ``./setup.sh`` to see the help.
 
-.. code-block:: bash
+.. tip::
 
-    cd ~
-    git clone https://github.com/daler/dotfiles.git
-    cd dotfiles
-
-**Don't have git installed?** Download the `zip file
-<https://github.com/daler/dotfiles/archive/master.zip>`_ containing the latest
-version of this repo, unzip, and go to the unzipped directory.
-
-**To test**, run:
-
-.. code-block::
-
-    ./setup.sh
-
-to see the help which includes links for each tool and a guide on what steps
-can be run on what kinds of systems.
+   Are you setting up a recent Mac? The default shell is ``zsh`` which may cause
+   issues. See :ref:`zshmac` for how to change it back to bash.
 
 .. _dotfilessection:
 
-1. dotfiles
------------
+1. Copy over dotfiles
+---------------------
 
-There are two options, :ref:`option1` and :ref:`option2`. Choose option 1 if
-you are just starting out in `BSPC <https://bioinformatics.nichd.nih.gov>`_ and
-don't already have your own dotfiles, or if you want the "batteries included"
-experience.
-
-If you choose option 2, it may take some more effort since you will need to
-read through the various files to figure out what to use or keep track of what
-parts are needed from these dotfiles to make the subsequent installations work.
-This is all documented below.
+There are two paths to take here:
 
 .. _option1:
 
-Option 1: Use everything
-~~~~~~~~~~~~~~~~~~~~~~~~
-**To replace all your existing dotfiles with the ones here**, run:
+.. rubric:: **Option 1: start fresh**
 
-.. code-block:: bash 
+
+- Are you setting up a new machine?
+- Have you made a backup of your files and want to try these out?
+- Do you want the "batteries included" experience?
+
+Then you should probably start fresh. Do this to create or overwrite existing
+files, and then close your terminal and reopen it to use the new configuration:
+
+.. code-block:: bash
+
+    # START FRESH....
 
     ./setup.sh --dotfiles
 
-This copies files over to your home directory. You should now either
-close your terminal and reopen it, or source the new :file:`.bashrc` file:
+    # then close your terminal and re-open
 
-.. code-block:: bash
+.. details:: Details
+    :anchor: dotfiles-details
 
-   source ~/.bashrc
+    The ``./setup.sh --dotfiles`` command copies all dotfiles over to your home
+    directory, making a backup of any existing files in case you want to roll
+    back. The list of files copied can be found in :file:`include.file`.
 
-and then move to :ref:`setupsection`.
+    It's important to close and then reopen your terminal so that your terminal
+    will load all the new configuration.
 
-.. warning::
-
-    This will make a backup of any existing files so you can roll back any
-    changes if you don’t like anything here. This method is best when you are
-    setting up a machine for the first time.
 
 .. _option2:
 
-Option 2: Selective usage
-~~~~~~~~~~~~~~~~~~~~~~~~~
-**Otherwise if you want to manually copy over the parts that you find useful**,
-you'll probably want to spend some time reading through :ref:`bash`,
-:ref:`vim`, and :ref:`tmux` to see what's useful. You can copy over the parts
-of the relevant config files that may be useful to you.
+.. rubric:: **Option 2: update existing**
 
-However, you should at least put the following line in your ``.bashrc`` or
-``.bash_profile``, which adds the directories into which later tools will be
-installed:
+Do this if you already have your own files.
+
+* Read through :ref:`bash`, :ref:`vim`, and :ref:`tmux` to see how things are set up.
+* ``./setup.sh --vim-diffs`` may be helpful to you if you're updating. See
+  :ref:`working-with-diffs` if you need a refresher for working with diffs.
+* Use the tool installation commands as-is, but make sure :file:`~/opt/bin` is on your ``$PATH``
 
 .. code-block:: bash
 
-    # add to .bashrc or .bash_profile
-    export PATH="$HOME/opt/bin:$PATH"
+    # UPDATE EXISTING...
 
-If you've used this repo before and want to update, but aren't sure what's
-changed and whether you have custom stuff that you want to keep, the setup
-script provides some tools for figuring this out. For example, the
-:program:`icdiff` tool shows colored, side-by-side, easy-to-read diffs. Install
-it to :file:`~/opt/bin` with
-
-.. code-block:: bash
-
-    ./setup.sh --install-icdiff
-
-and then use it with
-
-.. code-block:: bash
-
-    # shows diffs through icdiff
-    ./setup.sh --diffs
-
-There are also some other ways of viewing the diffs to decide what to add. If
-you're familiar with vimdiff, this will open up diffs of all the files included
-in this repo to compare to what you already have:
-
-.. code-block:: bash
-
-    # shows diffs in vimdiff
     ./setup.sh --vim-diffs
 
-Alternatively you can browse the files and read the comments in them to see
-what might be useful.
+    # use standard vim diff operations, e.g.
+    # ]c, do, dp, :qa
 
-In any case, once you're done with your dotfiles you can move on to the next
-step.
+The remainder of this documentation will assume you're starting fresh.
 
 .. _setupsection:
 
-2: setup
---------
+2: Setup vim & conda
+--------------------
+2a: Set a patched terminal font
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-2.1 vim
-~~~~~~~
+* Manually download and install your favorite font from `nerdfonts.com
+  <https://www.nerdfonts.com/>`_. This needs to be done **on your local
+  machine**.
 
-This section sets up vim (or neovim), particularly to get set up for using
-plugins.
+* Install by double-clicking the .ttf files. On Mac, for example, this will
+  open the font manager, where you can click the "Install" button.
 
-2.1.1 neovim
-++++++++++++
+* Change your terminal program's preferences to use the new font. You're
+  looking for a font that includes "Nerd Font". *Using Terminal on Mac? You'll
+  also need to set the same font for non-ASCII characters.*
 
-Do this if you want to use `neovim <https://neovim.io/>`_. See
-:ref:`why` for more help on deciding.
+
+.. details:: Details
+
+  Without a patched font, you'll get question mark symbols showing up in many places
+  in nvim. That's because many of the plugins expect fonts with additional glyphs.
+
+  Do this **on the machine running the terminal app** because that's the program
+  displaying all the text. This is almost always your local machine. For example,
+  even if you're setting up dotfiles on a remote cluster, the font should not be
+  installed there. It should be installed on the laptop you're using to connect
+  to that cluster.
+
+  In `this gif
+  <https://raw.githubusercontent.com/wiki/vim-airline/vim-airline/screenshots/demo.gif>`_,
+  you can see arrow shapes for buffers, line number glyphs, and so on. To get
+  these, you need a patched font, and your terminal needs to be set to use the
+  font.
+
+  Skip this step if you don't want those.
+
+
+2b: neovim
+~~~~~~~~~~
+
+Do this if you want to use `neovim <https://neovim.io/>`_. See :ref:`why` for
+more help on deciding.
 
 .. code-block::
 
     ./setup.sh --install-neovim
 
-This:
+    # then close and reopen your terminal
 
-- installs neovim to :file:`~/opt/bin`
-- so that `nvim` will run when you type `vim`, this adds an alias `alias
-  vim=nvim` to :file:`~/.aliases`. As described in :ref:`bash`, this is sourced
-  each time you start a new shell. If you are using :ref:`option2` and you are
-  not using the module approach of separate files,  then you may want to
-  manually add that alias to your :file:`.bashrc` or :file:`.bash_profile`.
+.. details:: Details
+
+     This installs Neovim to :file:`~/opt/bin`, and then creates an ``alias
+     vim=nvim`` in the :file:`~/.aliases` file (which is sourced by
+     :file:`~/.bashrc`). This way, whenever you call ``vim``, the alias will
+     redirect it to ``nvim``.
+
+     However it's important to close and reopen your terminal, because this
+     alias is conditional on finding nvim, and the alias is only created upon
+     first starting bash.
+
+     If you want to use actual ``vim``, provide the full path when calling it.
+     For example, on many machines it's at :file:`/usr/bin/vim`.
 
 
-2.1.2 vim/nvim plugin setup
-+++++++++++++++++++++++++++
-
-Do this if you want to use all the plugins in the ``.config/nvim/init.vim``
-file or if you want to set up vim-plug at all for any plugins. If you're going
-with :ref:`option1` then you should do this.
-
-This step sets up `vim-plug <https://github.com/junegunn/vim-plug>`_, placing
-the required files in the locations expected by vim and neovim. There are a lot
-of vim plugins included, which you can read more about at :ref:`vim`. If you're
-using :ref:`option2`, this step is useful if you have plugins managed by
-vim-plug.
-
-- set up vim-plug:
-
-.. code-block:: bash
-
-    ./setup.sh --set-up-vim-plugins
-
--  As the command reminds you, open up vim (and/or nvim, if you installed that)
-   and run :command:`:PlugInstall`. This will install the plugins configured in
-   :file:`.vimrc` (for vim) or :file:`.config/nvim/init.vim` (for nvim).
-
-2.1.3 powerline
-+++++++++++++++
-
-Do this if you want the fancy `vim-airline
-<https://github.com/vim-airline/vim-airline>`_ status bar in vim; these are
-special fonts to make that work.
-
-The vim-airline plugin uses fancy glyphs (see the documentation for some nice
-demos). Those arrow shapes for buffers, line number glyphs, and so on need
-a patched font, and your terminal needs to be set to use those font.
-
-This only needs to be done on the machine you’re running the terminal app on.
-So this does not need to be run on a remote machine.
-
-- Install the fonts with:
-
-.. code-block:: bash
-
-    ./setup.sh --powerline
+2c: neovim plugin setup
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. note::
 
-   You may get a warning about "cannot load default config file". As long as
-   the new fonts show up, you should be fine.
+  Have you used these dotfiles before? In Oct 2023, the nvim configuration
+  changed. Please see :ref:`nvim-lua` for more context, rationale, and details
+  on migrating to this new config method.
 
-.. note::
+Plugins are managed via the `lazy.nvim <https://github.com/folke/lazy.nvim>`_
+manager. Simply opening neovim should be sufficient to trigger ``lazy.nvim`` to
+bootstrap itself and then download, install, and configure plugins
+automatically.
 
-    Once it installs, you’ll need to configure your terminal preferences to use
-    one of the new fonts that ends in “for Powerline”. Note that on Terminal on
-    Mac, you'll also need to set the font for non-ASCII characters.
+Or you can run this command to have it quit automatically when it's done:
 
-2.2: conda
-~~~~~~~~~~
+.. code-block:: bash
+
+  # this will open nvim, install plugins, and quit when done
+  nvim +"lua require('lazy').restore({wait=true})" +q
+
+.. details:: Details
+
+  ``lazy.nvim`` will show progress downloading plugins. Treesitter will also
+  automatically install parsers, so you should watch the log on the bottom and
+  wait until everything settles down. Then you can quit as normal with
+  ``<Esc>:q``.
+
+  If running ``nvim`` didn't work, check that it's on your path. Close and then
+  reopen your terminal just to make sure. If you installed with ``./.setup.sh
+  --install-neovim``, it put it in ``~/opt/bin/nvim``. Make sure that directory
+  is on your PATH by checking:
+
+  .. code-block:: bash
+
+    echo $PATH
+
+
+.. _setupconda:
+
+2d: conda
+~~~~~~~~~
 
 `conda <https://docs.conda.io/en/latest/>`_ is a cross-platform,
 language-agnostic package manager. It's by far the best way to get set up with
-Python, but it also works for many other languages.
-
-2.2.1: Install conda
-++++++++++++++++++++
-
-Do this if you want to use conda to create environments that are
-isolated from the rest of your system.
-
-The following command:
-
-- downloads the latest version of `Mambaforge
-  <https://github.com/conda-forge/miniforge>`_
-- installs conda and mamba to :file:`~/mambaforge/condabin/conda` and :file:`~/mambaforge/condabin/mamba`, or if you're on NIH's Biowulf cluster
-  where the home directory is too small to support the installation, it will
-  install to :file:`/data/$USER/mambaforge/condabin`
-- adds the line ``export PATH="$PATH:~/mambaforge/condabin"`` to the :file:`~/.path`
-  (which you can read more about at :ref:`bash`)
-
-If you went with :ref:`option2`, you should add this to your path manually.
+Python, but it also works for many other languages. See :ref:`conda` for some
+details on how to activate environments.
 
 .. code-block:: bash
 
-  ./setup.sh --install-miniconda
+  ./setup.sh --install-conda
+  ./setup.sh --set-up-bioconda
 
-After installation, run the following:
+.. warning::
 
-.. code-block:: bash
+    Are you on a Mac with an M1 or M2 chip? You will not be able to install
+    packages from Bioconda because packages are not built yet for the Apple
+    Silicon architecture.
 
-   conda init bash
+.. details:: Details
 
-to allow the use of ``conda activate`` to activate environments.
+    First, this downloads the latest version of `Mambaforge
+    <https://github.com/conda-forge/miniforge>`_, and installs conda and mamba
+    into :file:`~/mambaforge/condabin`.
 
-2.2.2: set up bioconda
-++++++++++++++++++++++
+    Then it adds the line ``export PATH="$PATH:~/mambaforge/condabin"`` to the
+    :file:`~/.path` (which you can read more about at :ref:`bash`).
 
-Do this if you want to use `Bioconda <https://bioconda.github.io>`_ and you
-have installed conda (see above). It sets up the channels in the proper order
-as recommended by the bioconda docs.
+    If you happen to be on NIH's Biowulf cluster where the home directory is too small to
+    support the installation, this will auto-detect that and install instead to
+    :file:`/data/$USER/mambaforge/condabin` and add the line ``export
+    PATH="$PATH:~/data/$USER/mambaforge/condabin`` to the :file:`~/.path`
 
-.. code-block:: bash
+    Finally, ``./setup.sh --set-up-bioconda`` sets up the bioconda and
+    conda-forge channels in the right way as documented by `Bioconda
+    <https://bioconda.github.io>`_.
 
-   ./setup.sh --set-up-bioconda
 
 .. _toolsection:
 
-3: programs
------------
-
-This section (and the following :ref:`tools`) contains quick ways of getting
-useful stuff installed. This is my opinionated list of what I like to have
-installed, so you should check the files referenced and edit them as you see
-fit to match your requirements.
-
-3.1 install conda packages
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-Do this if you want to install the conda packages in :file:`requirements.txt`
-into the base conda environment. (you may want to edit that file first)
-
-If you're on a Mac, :file:`requirements-mac.txt` will be used as well:
-
-.. code-block:: bash
-
-   ./setup.sh --conda-env
-
-3.2: install apt packages
-~~~~~~~~~~~~~~~~~~~~~~~~~
-Do this if you want to install a large or small set of package for Linux (you
-may want to edit the files mentioned below first).
-
-If you're on Linux and have root privileges, this is a quick way to install
-"the works" or optionally a minimal set of packages. You can inspect the files
-:file:`apt-installs.txt` or :file:`apt-installs-minimal.txt` for what will be
-installed. These are packages I find to be most useful (git, build-essential,
-meld, and so on).
-
-.. code-block::
-
-    ./setup.sh --apt-install
-
-    # or
-
-    ./setup.sh --apt-install-minimal
-
-3.3: install other tools
-~~~~~~~~~~~~~~~~~~~~~~~~
+3: Installing programs
+----------------------
 
 The :file:`setup.sh` script has many commands for installing various tools
 I find useful. These warrant their own section, so **continue to** :ref:`tools` for
 descriptions of tools and the commands to install them.
+

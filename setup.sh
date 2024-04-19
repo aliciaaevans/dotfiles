@@ -31,6 +31,7 @@ BFG_VERSION=1.14.0
 FD_VERSION=8.5.3
 BLACK_VERSION=22.6.0
 PYP_VERSION=1.1.0
+FZF_VERSION=0.48.1
 
 function showHelp() {
 
@@ -92,15 +93,16 @@ function showHelp() {
 
     header "RECOMMENDED ORDER:"
     echo "    1)  ./setup.sh --dotfiles"
-    echo "    2)  CLOSE TERMINAL, OPEN A NEW ONE"
-    echo "    3)  ./setup.sh --install-neovim"
-    echo "    4)  ./setup.sh --set-up-vim-plugins"
-    echo "    5)  ./setup.sh --install-conda"
-    echo "    6)  ./setup.sh --set-up-bioconda"
+    echo "    2)  ./setup.sh --install-neovim"
+    echo "    3)  ./setup.sh --install-conda"
+    echo "    4)  ./setup.sh --set-up-bioconda"
+    echo "    5) CLOSE TERMINAL, OPEN A NEW ONE"
+    echo "    6) Open vim (which should now be aliased to nvim) and allow plugins to install, then quit"
     echo "    7)  ./setup.sh --install-fzf"
     echo "    8)  ./setup.sh --install-ripgrep"
     echo "    9)  ./setup.sh --install-vd"
     echo "    10) ./setup.sh --install-pyp"
+    echo "    11) ./setup.sh --install-fd"
     echo
     echo "  On Mac:"
     echo "       ./setup.sh --mac-stuff"
@@ -139,12 +141,6 @@ function showHelp() {
         " (https://github.com/neovim/neovim/wiki/Building-Neovim#build-prerequisites) " \
         "installed."
 
-    cmd "--set-up-vim-plugins" \
-        "vim-plug needs to be installed separately," \
-        "and then all vim plugins can be simply be installed" \
-        "by adding them to .vimrc or init.vim" \
-        "Homepage: https://github.com/junegunn/vim-plug"
-
     header "conda setup:"
 
     cmd "--install-conda" \
@@ -165,12 +161,12 @@ function showHelp() {
     cmd "--mac-stuff" \
         "Make some Mac-specific settings"
 
-    cmd "--powerline" \
-        "Install powerline fonts. Powerline fonts include the" \
-        "fancy glyphs used for the vim-airline status bar." \
-        "Only needs to be installed on local machine that is running" \
-        "the terminal app." \
-        "Homepage: https://github.com/vim-airline/vim-airline"
+    cmd "--mac-keyboard-fix" \
+        "Fix Home/End behavior when using an external, non-Mac keyboard"
+
+    cmd "--fix-tmux-terminfo" \
+        "Update terminfo so that italics work within tmux; " \
+        "see https://jdhao.github.io/2018/10/19/tmux_nvim_true_color"
 
     cmd "--install-alacritty" \
         "Alacritty is a terminal emulator that is quite fast;" \
@@ -255,6 +251,9 @@ function showHelp() {
         "to and provides a convenient interface for jumping directly" \
         "there." \
         "Homepage: https://github.com/ajeetdsouza/zoxide"
+
+    cmd "--install-npm" \
+        "Installs nodejs and npm into a conda directory"
     echo
 }
 
@@ -328,10 +327,15 @@ can_make_conda_env () {
 
 # Find the conda installation location
 CONDA_LOCATION=
+MAMBA_LOCATION=
 check_for_conda () {
     if command -v conda > /dev/null; then
 
         CONDA_LOCATION=$(conda info --base)
+
+        # In 1.5.5, mamba info --base now alwo reports version. So only grab
+        # the line that has a path on it.
+        MAMBA_LOCATION=$(mamba info --base | grep "/")
 
         # Even if the user has not run conda init, this will enable the use of
         # "conda activate" within the various conda creation steps below.
@@ -393,7 +397,7 @@ install_env_and_symlink () {
 
     can_make_conda_env $ENVNAME
     mamba create -y -n $ENVNAME $CONDAPKG
-    ln -sf "$CONDA_LOCATION/envs/$ENVNAME/bin/$EXECUTABLE" $HOME/opt/bin/$EXECUTABLE
+    ln -sf "$MAMBA_LOCATION/envs/$ENVNAME/bin/$EXECUTABLE" $HOME/opt/bin/$EXECUTABLE
     printf "${YELLOW}Installed $HOME/opt/bin/$EXECUTABLE${UNSET}\n"
     check_opt_bin_in_path
     set -u
@@ -445,20 +449,23 @@ elif [ $task == "--install-conda" ]; then
     # On Biowulf/Helix, if we install into $HOME then the installation might
     # larger than the quota for the home directory. Instead, install to user's
     # data directory which has much more space.
+    # Also, .path needs to reflect this change.
     MAMBAFORGE_DIR=$HOME/mambaforge
     if [[ $HOSTNAME == "helix.nih.gov" || $HOSTNAME == "biowulf.nih.gov" ]]; then
         MAMBAFORGE_DIR=/data/$USER/mambaforge
 
         # Newer versions of the installer cannot run from a noexec directory
-        # which may be the case on some hosts.  See discussion at
+        # which may be the case on some hosts. See discussion at
         # https://github.com/ContinuumIO/anaconda-issues/issues/11154#issuecomment-535571313
         export TMPDIR=/data/$USER/mambaforge
-    fi
+
+   fi
 
     download "https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-$(uname)-$(uname -m).sh" mambaforge.sh
     bash mambaforge.sh -b -p $MAMBAFORGE_DIR
     rm mambaforge.sh
-    printf "${YELLOW}conda installed at ${MAMBAFORGE_DIR}/condabin. Make sure it's on your path.${UNSET}\n"
+    echo "export PATH=\$PATH:$MAMBAFORGE_DIR/condabin" >> ~/.path
+    printf "${YELLOW}conda installed at ${MAMBAFORGE_DIR}/condabin. This has been added to your ~/.path file, but you should double-check to make sure it gets on your path. You may need to close and then reopen your terminal.${UNSET}\n"
 
 elif [ $task == "--set-up-bioconda" ]; then
     ok "Sets up Bioconda by adding the dependent channels in the correct order"
@@ -520,61 +527,49 @@ elif [ $task == "--compile-neovim" ]; then
     check_opt_bin_in_path
 
 
-elif [ $task == "--set-up-vim-plugins" ]; then
-    ok "Downloads plug.vim into ~/.local/share/nvim/site/autoload/plug.vim. (for nvim) and ~/.vim/autoload/plug.vim (for vim). Read the instructions after this command when done."
-    nvim_dest=~/.local/share/nvim/site/autoload/plug.vim
-    vim_dest=~/.vim/autoload/plug.vim
-    download https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim $nvim_dest
-    download https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim $vim_dest
-
-    VIM=$(which vim)
-    NVIM=$(which nvim)
-
-    if [ ${MANUAL_PLUG_INSTALL:=0} != 1 ]; then
-        echo
-        ok "vim ($VIM) will now open, install plugins by running :PlugInstall, and then quit."
-        echo
-        vim -c ':PlugInstall' -c ':bunload 1' -c ':q'
-
-        echo
-        ok "nvim ($NVIM) will now open, install plugins by running :PlugInstall, and then quit"
-        echo
-        nvim -c ':PlugInstall' -c ':bunload 1' -c ':q'
-
-        printf "${YELLOW}In the future if you add plugins to your vim/nvim config, run :PlugInstall${UNSET}\n"
-    else
-        printf "${YELLOW}Please open vim and/or nvim, run :PlugInstall${UNSET}\n"
-    fi
-
-
-
 elif [ $task == "--mac-stuff" ]; then
     ok "Sets the shell to be bash, and silences the warning about zsh being the default by adding an env var to ~/.extra"
     chsh -s /bin/bash
     echo "export BASH_SILENCE_DEPRECATION_WARNING=1" >> ~/.extra
 
-elif [ $task == "--powerline" ]; then
-    ok "Installs patched powerline fonts from https://github.com/powerline/fonts for use with vim-airline"
-    git clone https://github.com/powerline/fonts.git --depth 1 /tmp/fonts
-    (cd /tmp/fonts && ./install.sh)
-    rm -rf /tmp/fonts
-    echo
-    printf "${YELLOW}Change your terminal's config to use the new powerline patched fonts${UNSET}\n"
-    echo
 
-
+elif [ $task == "--mac-keyboard-fix" ]; then
+    ok "Fix Home/End key behavior when using an external, non-Mac keyboard."
+    mkdir -p ~/Library/KeyBindings
+    cp DefaultKeyBinding.dict ~/Library/KeyBindings/DefaultKeyBinding.dict
+    printf "${YELLOW}Created ~/Library/KeyBindings/DefaultKeyBinding.dict; restart programs to see the effect.${UNSET}\n"
 
 # ----------------------------------------------------------------------------
 # Individual --install commands
 
 elif [ $task == "--install-fzf" ]; then
     ok "Installs fzf (https://github.com/junegunn/fzf)"
-    (
-      git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
-      ~/.fzf/install --no-update-rc --completion --key-bindings
-    )
-    printf "${YELLOW}fzf installed; see ~/.fzf${UNSET}\n"
+    mkdir -p /tmp/fzf
+    if [[ $OSTYPE == darwin* ]]; then
+        URL=https://github.com/junegunn/fzf/releases/download/${FZF_VERSION}/fzf-${FZF_VERSION}-darwin_arm64.zip
+        download $URL /tmp/fzf/fzf.zip
+        (
+            cd /tmp/fzf
+            unzip fzf.zip
+            cp fzf ~/opt/bin
+        )
+    else
+        URL=https://github.com/junegunn/fzf/releases/download/${FZF_VERSION}/fzf-${FZF_VERSION}-linux_amd64.tar.gz
+        download $URL /tmp/fzf/fzf.tar.gz
+        (
+            cd /tmp/fzf
+            tar -xf fzf.tar.gz
+            cp fzf ~/opt/bin
+        )
+    fi
+    rm -r /tmp/fzf
 
+    if [ ! $(grep -q "(fzf --bash)" ~/.bashrc) ]; then
+        echo "" >> ~/.bashrc
+        echo "# Set up fzf keybindings and fuzzy completion" >> ~/.bashrc
+        echo 'eval "$(fzf --bash)"' >> ~/.bashrc
+    fi
+    printf "${YELLOW}fzf installed; see ~/.fzf${UNSET}\n"
 
 elif [ $task == "--install-ripgrep" ]; then
     ok "Installs ripgrep to $HOME/opt/bin"
@@ -590,6 +585,7 @@ elif [ $task == "--install-ripgrep" ]; then
     cd /tmp/rg
     tar -xf ripgrep.tar.gz
     cp ripgrep*/rg ~/opt/bin
+    rm -r /tmp/rg
     printf "${YELLOW}Installed to ~/opt/bin/rg${UNSET}\n"
     check_opt_bin_in_path
 
@@ -654,7 +650,7 @@ elif [ $task == "--install-radian" ]; then
     mamba create -y -n radian python r
     conda activate radian
     pip install radian
-    ln -sf $CONDA_LOCATION/envs/radian/bin/radian $HOME/opt/bin/radian
+    ln -sf $MAMBA_LOCATION/envs/radian/bin/radian $HOME/opt/bin/radian
     conda deactivate
     set -u
     printf "${YELLOW}Installed $HOME/opt/bin/radian${UNSET}\n"
@@ -790,6 +786,13 @@ elif [ $task == "--install-bfg" ]; then
     check_opt_bin_in_path
     printf "${YELLOW}Installed jar file to ~/opt/bin, and created wrapper script ~/opt/bin/bfg.${UNSET}\n\n"
 
+elif [ $task == "--install-npm" ]; then
+    ok "Install npm in a named conda env and add to ~/.path?"
+    check_for_conda
+    mamba create -n npm -y nodejs
+    echo "export PATH=\$PATH:$MAMBA_LOCATION/envs/npm/bin" >> ~/.path
+    printf "${YELLOW}Installed npm to $MAMBA_LOCATION/envs/npm/bin and added that to your ~/.path file. You may need to restart your terminal or source ~/.bashrc.${UNSET}\n\n"
+
 elif [ $task == "--dotfiles" ]; then
     set -x
 
@@ -827,6 +830,14 @@ elif [ $task == "--dotfiles" ]; then
     fi
     unset doIt
 
+elif [ $task == "--fix-tmux-terminfo" ]; then
+    ok "Runs the fix from https://jdhao.github.io/2018/10/19/tmux_nvim_true_color/ for getting italics in tmux"
+    download http://invisible-island.net/datafiles/current/terminfo.src.gz terminfo.src.gz
+    gunzip terminfo.src.gz
+    tic -xe tmux-256color,screen-256color terminfo.src
+    rm terminfo.src
+    printf "${YELLOW}Added ~/.terminfo. You can now use 'set -g default-terminal \"tmux-256color\" in your .tmux.conf.${UNSET}\n"
+
 
 
 # ----------------------------------------------------------------------------
@@ -842,8 +853,12 @@ elif [ $task == "--diffs" ]; then
     $cmd ~ . | grep -v "Only in $HOME" | sed "s|$cmd||g"
 
 elif [ $task == "--vim-diffs" ]; then
-    ok "Opens up vim -d to display differences between files in this repo and your home directory"
-    for i in $(git ls-tree -r HEAD --name-only | grep "^\."); do nvim -d $i ~/$i; done
+    ok "Opens up vim -d to display differences between files in this repo and your home directory. Your existing files will be on the RIGHT"
+    for i in $(cat include.file); do
+        if ! diff $i ~/$i &> /dev/null; then
+            nvim -d $i ~/$i;
+        fi
+    done
 else
     showHelp
 

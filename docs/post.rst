@@ -5,38 +5,89 @@ The ``setup.sh`` script tries to automate as much as possible, but there are
 some things that have to be manually done. This page documents those additional
 tasks.
 
+.. _macpostinstall:
+
 Mac
 ---
 
-- To turn off the iTerm2 audio bell (that "donk!" noise you get after hitting
-  TAB): under preferences, go to Profiles, then the Terminal tab. Make sure
-  "Silence bell" is checked.
+Cursor
+~~~~~~
 
-- To avoid the message abou zsh popping up all the time (and you still want to use bash):
+- In iTerm, I like tweaking the cursor a little, to have the block cursor show
+  inverted colors and to have the vertical line cursor a little wider so it's
+  easier to see. First, in Preference -> Profile -> Colors, select "Smart box
+  cursor color". Then in Preferences -> Advanced:
+
+    - width of vertical bar cursor: 2
+    - threshold for smart cursor for foreground: 0
+    - threshold for smart cursor for background: 0
+
+Disable bell
+~~~~~~~~~~~~
+
+To turn off the iTerm2 audio bell (that "donk!" noise you get after hitting
+TAB): under preferences, go to Profiles, then the Terminal tab. Make sure
+"Silence bell" is checked.
+
+
+Fix keyboard on Mac
+~~~~~~~~~~~~~~~~~~~
+
+By default on Mac, unless overridden by a program, Home and End jump to the
+beginning/end of a *document* rather than a *line*. This is different from the
+Windows and Linux behavior of jumping to beginning/end of a line.
+
+The typical workaround is to use Cmd-Left and Cmd-Right. Some programs (like
+Outlook on Mac) already override this. But some don't, noticeable web browsers.
+When editing a large text input box in a web browser, it can be frustrating if
+you mistakenly hit End, expecting to jump to the end of a like in Outlook, but
+instead it jumps to the very end of the text input and you have to go find where you were.
+
+Running ``./setup.sh --mac-keyboard-fix`` fixes this by creating a new
+``~/Library/KeyBindings/DefaultKeyBinding.dict`` file; see that file for
+details. You'll need to restart programs to see the effect.
+
+.. _zshmac:
+
+zsh to bash
+~~~~~~~~~~~
+
+Recent macOS versions use ``zsh`` as the default shell instead of bash. These
+dotfiles assume bash as the default shell (for compatibility with HPC (Linux)
+systems which typically default to bash as well). See `this post
+<https://apple.stackexchange.com/a/361957>`_ for a great explanation of the
+differences. 
+
+The ``chsh`` command just has to be run once to change the shell to bash. To
+avoid the message about zsh popping up all the time (as `documented at
+support.apple.com <https://support.apple.com/en-us/HT208050>`_), set
+``BASH_SILENCE_DEPRECATION_WARNING=1``. Here, we export it in :file:`~/.extra`,
+which as :ref:`bashrc` describes, will be sourced by :file:`.bashrc` once these
+dotfiles are set up.
 
 .. code-block::
 
     chsh -s /bin/bash
+    echo "export BASH_SILENCE_DEPRECATION_WARNING=1" >> ~/.extra
 
-and then as `documented at support.apple.com
-<https://support.apple.com/en-us/HT208050>`_ export this env var to disable
-(e.g., in your `~/.extras` file):
+This can also be done by using ``./setup.sh --mac-stuff``.
 
-.. code-block::
+Touchbar
+~~~~~~~~
+To turn off the application-specific changing of the touch bar: System
+Preferences > Keyboard, then change "Touch Bar shows" to "Expanded Control
+Strip".
 
-    export BASH_SILENCE_DEPRECATION_WARNING=1
+Copy/paste
+~~~~~~~~~~
+In iTerm preferences, click the "General" icon, and check "Applications in
+terminal may access clipboard"
 
-- To turn off the application-specific changing of the touch bar: System
-  Preferences > Keyboard, then change "Touch Bar shows" to "Expanded Control
-  Strip".
-
-- In iTerm preferences:
-
-  - click the "General" icon, and check "Applications in terminal may access
-    clipboard"
-
-  - click the "Profiles" icon, and in the "Text" "Use built-in
-    Powerline glyphs"
+Mac Terminal
+~~~~~~~~~~~~
+If you're using Mac Terminal, the colorscheme for nvim will not work because
+the built-in Mac Terminal.app does not support true color for some reason. See
+:ref:`mac-terminal-colors` for details on how to fix this.
 
 SSH config
 ----------
@@ -78,3 +129,42 @@ Git config
 
     git config --global user.name "your name here"
     git config --global user.email "your email here"
+
+Alacritty config
+----------------
+If you're using Alacritty as your terminal, it needs a little configuration to
+get colors to work on tmux.
+
+These instructions are from `this gist <https://gist.github.com/andersevenrud/015e61af2fd264371032763d4ed965b6>`_.
+
+In :file:`.config/alacritty/alacritty.yml`::
+
+    env:
+        TERM: xterm-256color
+
+In :file:`.tmux.conf`::
+
+    set -g default-terminal "tmux-256color"
+    set -ag terminal-overrides ",xterm-256color:RGB"
+
+    # Or use a wildcard instead of forcing a default mode.
+    # Some users in the comments of this gist have reported that this work better.
+    #set -sg terminal-overrides ",*:RGB"
+
+    # You can also use the env variable set from the terminal.
+    # Useful if you share your configuration betweeen systems with a varying value.
+    #set -ag terminal-overrides ",$TERM:RGB"
+
+In :file:`.config/nvim/init.vim`::
+
+
+    " You might have to force true color when using regular vim inside tmux as the
+    " colorscheme can appear to be grayscale with "termguicolors" option enabled.
+    " if !has('gui_running') && &term =~ '^\%(screen\|tmux\)'
+    "   let &t_8f = "\<Esc>[38;2;%lu;%lu;%lum"
+    "   let &t_8b = "\<Esc>[48;2;%lu;%lu;%lum"
+    " endif
+
+    set termguicolors
+    colorscheme yourfavcolorscheme
+

@@ -26,11 +26,6 @@ source ~/.git-prompt.sh
 # makes less work on things like tarballs and images
 [ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
 
-# enable color support of ls and also add handy aliases
-if [ `command -v dircolors` ]; then
-    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
-fi
-
 if [[ $OSTYPE == darwin* ]]; then
     test -f ~/.git-completion.bash && source ~/.git-completion.bash
 fi
@@ -43,4 +38,8 @@ fi
 #
 # The `ca` and `conda_deactivate_all` functions used here are defined in the
 # .functions file, which in turn was sourced at the beginning of this file.
-[[ -z $TMUX ]] || ca; conda_deactivate_all
+if command -v conda > /dev/null; then
+    if [ ! -z $TMUX ]; then
+        conda_deactivate_all
+    fi
+fi

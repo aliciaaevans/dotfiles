@@ -2,3 +2,6 @@
 .extra
 .path
 env
+__pycache__/
+docs/_build
+lazy-lock.json
