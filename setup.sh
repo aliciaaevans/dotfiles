@@ -524,15 +524,16 @@ elif [ $task == "--install-neovim" ]; then
         tar -xzf nvim-macos.tar.gz
         mkdir -p "$HOME/opt/bin"
         mv nvim-macos-*64 "$HOME/opt/neovim"
+    elif [ "$(arch)" == "aarch64" ]; then 
+        download https://github.com/neovim/neovim/releases/download/v${NVIM_VERSION}/nvim-linux-arm64.tar.gz nvim-linux-arm64.tar.gz
+        tar -xzf nvim-linux-arm64.tar.gz
+        mv nvim-linux-arm64 "$HOME/opt/neovim"
+        rm nvim-linux-arm64.tar.gz
     else
-        if [ "$(arch)" == "aarch64" ]; then 
-            download https://github.com/neovim/neovim/releases/download/v${NVIM_VERSION}/nvim-linux-arm64.tar.gz nvim-linux.tar.gz
-        else
-            download https://github.com/neovim/neovim/releases/download/v${NVIM_VERSION}/nvim-linux64.tar.gz nvim-linux.tar.gz
-        fi
-        tar -xzf nvim-linux.tar.gz
-        mv nvim-linux "$HOME/opt/neovim"
-        rm nvim-linux.tar.gz
+        download https://github.com/neovim/neovim/releases/download/v${NVIM_VERSION}/nvim-linux64.tar.gz nvim-linux64.tar.gz
+        tar -xzf nvim-linux64.tar.gz
+        mv nvim-linux64 "$HOME/opt/neovim"
+        rm nvim-linux64.tar.gz
     fi
         ln -sf ~/opt/neovim/bin/nvim ~/opt/bin/nvim
         printf "${YELLOW}- installed neovim to $HOME/opt/neovim${UNSET}\n"
