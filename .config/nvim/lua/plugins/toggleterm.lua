@@ -26,14 +26,29 @@ return {
           vim.cmd("if &buftype == 'terminal' | startinsert | endif")
         end,
       })
+
+      -- Patch toggleterm to use bracketed paste (special escape codes before
+      -- and after the text to be pasted)
+      -- https://en.wikipedia.org/wiki/Bracketed-paste
+      -- https://cirw.in/blog/bracketed-paste
+      vim.api.nvim_create_user_command(
+        "ToggleTermSendBracketedPaste",
+        function(args)
+          require("toggleterm").exec("\x1b[200~", 1)
+          require("toggleterm").send_lines_to_terminal("visual_selection", false, args)
+          require("toggleterm").exec("\x1b[201~", 1)
+        end,
+        { range = true, nargs = "?" }
+      )
     end,
 
     keys = {
       { "gxx", ":ToggleTermSendCurrentLine<CR><CR>", desc = "Send current line to terminal" },
-      { "gx", ":ToggleTermSendVisualSelection<CR>'><CR>", desc = "Send selection to terminal", mode = "x" },
+      { "gx", ":ToggleTermSendBracketedPaste<CR><CR>", desc = "Send selection to terminal", mode = "x" },
+
       {
         "<leader>cd",
-        "/```{r<CR>NjV/```<CR>k<Esc>:ToggleTermSendVisualSelection<CR>/```{r<CR>",
+        "/```{r<CR>NjV/```<CR>k<Esc>:ToggleTermSendBracketedPaste<CR>/```{r<CR>",
         desc = "Send RMarkdown chunk to R",
       },
       -- Immiedately after creating the terminal, disable the cursorline.

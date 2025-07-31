@@ -255,6 +255,9 @@ function showHelp() {
     cmd "--install-npm" \
         "Installs nodejs and npm into a conda directory"
 
+    cmd "--install-gh" \
+        "Installs gh, the github CLI"
+
     cmd "--nvim-test-drive" \
         "Move nvim binary, plugins, and config to backup directories so you can " \
         "try new updates from these dotfiles. Does not delete anything."
@@ -336,15 +339,10 @@ can_make_conda_env () {
 
 # Find the conda installation location
 CONDA_LOCATION=
-MAMBA_LOCATION=
 check_for_conda () {
     if command -v conda > /dev/null; then
 
         CONDA_LOCATION=$(conda info --base)
-
-        # In 1.5.5, mamba info --base now alwo reports version. So only grab
-        # the line that has a path on it.
-        MAMBA_LOCATION=$(mamba info --base | grep "/")
 
         # Even if the user has not run conda init, this will enable the use of
         # "conda activate" within the various conda creation steps below.
@@ -405,8 +403,8 @@ install_env_and_symlink () {
     EXECUTABLE=$3
 
     can_make_conda_env $ENVNAME
-    mamba create -y -n $ENVNAME $CONDAPKG
-    ln -sf "$MAMBA_LOCATION/envs/$ENVNAME/bin/$EXECUTABLE" $HOME/opt/bin/$EXECUTABLE
+    conda create -y -n $ENVNAME $CONDAPKG
+    ln -sf "$CONDA_LOCATION/envs/$ENVNAME/bin/$EXECUTABLE" $HOME/opt/bin/$EXECUTABLE
     printf "${YELLOW}Installed $HOME/opt/bin/$EXECUTABLE${UNSET}\n"
     check_opt_bin_in_path
     set -u
@@ -689,10 +687,10 @@ elif [ $task == "--install-radian" ]; then
     set +u
     # Note: radian needs R installed to compile the rchitect dependency. It
     # is unclear whether radian is dependent on a particular R version.
-    mamba create -y -n radian python r
+    conda create -y -n radian python r
     conda activate radian
     pip install radian
-    ln -sf $MAMBA_LOCATION/envs/radian/bin/radian $HOME/opt/bin/radian
+    ln -sf $CONDA_LOCATION/envs/radian/bin/radian $HOME/opt/bin/radian
     conda deactivate
     set -u
     printf "${YELLOW}Installed $HOME/opt/bin/radian${UNSET}\n"
@@ -794,7 +792,7 @@ elif [ $task == "--install-pyp" ]; then
     ok "Install pyp (https://github.com/hauntsaninja/pyp) into ~/opt/bin"
     set +u
     can_make_conda_env "pyp"
-    mamba create -y -n pyp python
+    conda create -y -n pyp python
     conda activate pyp
     pip install pypyp==${PYP_VERSION}
     ln -sf $(which pyp) $HOME/opt/bin/pyp
@@ -831,9 +829,9 @@ elif [ $task == "--install-bfg" ]; then
 elif [ $task == "--install-npm" ]; then
     ok "Install npm in a named conda env and add to ~/.path?"
     check_for_conda
-    mamba create -n npm -y nodejs
-    echo "export PATH=\$PATH:$MAMBA_LOCATION/envs/npm/bin" >> ~/.path
-    printf "${YELLOW}Installed npm to $MAMBA_LOCATION/envs/npm/bin and added that to your ~/.path file. You may need to restart your terminal or source ~/.bashrc.${UNSET}\n\n"
+    conda create -n npm -y nodejs
+    echo "export PATH=\$PATH:$CONDA_LOCATION/envs/npm/bin" >> ~/.path
+    printf "${YELLOW}Installed npm to $CONDA_LOCATION/envs/npm/bin and added that to your ~/.path file. You may need to restart your terminal or source ~/.bashrc.${UNSET}\n\n"
 
 elif [ $task == "--install-gh" ]; then
     ok "Install gh (GitHub CLI) in a named conda env and add to ~/.path?"
@@ -864,7 +862,53 @@ elif [ $task == "--dotfiles" ]; then
     cd "$(dirname "${BASH_SOURCE}")";
 
     function doIt() {
-        rsync --no-perms --backup --backup-dir="$BACKUP_DIR" -rvh --times --files-from=include.file . $HOME
+        # create backup dir
+        if [ ! -e $BACKUP_DIR ]; then
+            mkdir -p $BACKUP_DIR
+        fi
+
+        # now we go through include.file making copies from HOME to BACKUP_DIR
+        # and replacing with new dotfiles
+        for f in $( cat include.file );
+        do
+            # this is the final destination
+            dest=$HOME/$f
+
+            # if a directory
+            if [ -d $f ]; then
+                # strip trailing slash
+                ff=$( echo $f | sed -e "s/\/$//" )
+
+                # update the final destination
+                dest=$HOME/$ff
+
+                # - if destination exists make a backup
+                # - otherwise, just make the folder
+                if [ -e $dest ]; then
+                    mkdir -p ${BACKUP_DIR}/$ff
+
+                    # copy recursively (including hidden), then force delete to clean up
+                    # - NOTE: should we use 'mv' or 'rsync --delete' instead?
+                    cp -r -p ${dest}/. ${BACKUP_DIR}/${ff}/
+                    rm -rf $dest
+                else
+                    mkdir -p $dest
+                fi
+
+                # actually copy the files (including hidden) to destination
+                cp -r ${ff}/. ${dest}/
+            else
+                # if a regular file
+
+                # if it exists copy to backup
+                if [ -e $dest ]; then
+                    cp -p $dest ${BACKUP_DIR}/
+                fi
+
+                # then copy to destination
+                cp $f $dest
+            fi
+        done
     }
 
     if [ $DOTFILES_FORCE == "true" ]; then
@@ -960,10 +1004,21 @@ elif [ $task == "--diffs" ]; then
 
 elif [ $task == "--vim-diffs" ]; then
     ok "Opens up vim -d to display differences between files in this repo and your home directory. Your existing files will be on the RIGHT"
+
     for i in $(cat include.file); do
-        if ! diff $i ~/$i &> /dev/null; then
-            nvim -d $i ~/$i;
+        # if a directory, list files inside it recursively
+        # otherwise, use as is
+        if [[ -d $i ]]; then
+            all_files=$( find $i -type f )
+        else
+            all_files=( $i )
         fi
+
+        for j in ${all_files[@]}; do
+            if ! diff $j ~/$j &> /dev/null; then
+                nvim -d $j ~/$j;
+            fi
+        done
     done
 else
     showHelp
